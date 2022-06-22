@@ -7,7 +7,7 @@
 <body>
     <form method="POST" action="{{ route('message.store') }}">
         @csrf
-        Name： <input type="text" name="user_id" /><br>
+        User Id： <input type="text" name="user_id" /><br>
         Title： <input type="text" name="title" /><br>
         Content： <br>
         <textarea rows="10" cols="28" name="content"></textarea><br>
