@@ -1,44 +1,67 @@
 <html>
 
 <head>
+    <link href="/assets/css/index.css" rel="stylesheet" type="text/css">
     <title>留言板</title>
 </head>
 
 <body>
-    <form method="POST" action="{{ route('message.store') }}">
-        @csrf
-        User Id： <input type="text" name="user_id" /><br>
-        Title： <input type="text" name="title" /><br>
-        Content： <br>
-        <textarea rows="10" cols="28" name="content"></textarea><br>
-        Mood： <select name="mood_id">
-            <option value="">--請選擇一個心情--</option>
-            @foreach ($moods as $mood)
-                <option value="{{ $mood->id }}">{{ $mood->mood }}</option>
+    <h1>我是留言板</h1>
+
+    <p><br>狀態列：{{ session('msg') ?? '' }}</p>
+
+    <br><button class="button-style" onclick="location.href='{{ route('message.create') }}'" type="button">發表留言</button>
+
+    <table>
+        <thead>
+            <tr>
+                <th>操作</th>
+                <th>樓層</th>
+                <th>姓名</th>
+                <th>內容</th>
+                <th>建立時間</th>
+                <th>更新時間</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach ($results as $result)
+                <tr>
+                    <td>
+                        <br><button class="button-style"
+                            onclick="location.href='{{ route('message.edit', $result->id) }}'"
+                            type="button">編輯</button>
+
+                        <form action="{{ route('message.destroy', $result->id) }}" method="post">
+                            @csrf
+                            @method('delete')
+                            <button class="button-style" type="submit" onclick="return confirm('確認刪除？')">删除</button>
+                        </form>
+                    </td>
+                    <td>
+                        {{ $result->id }} 樓
+                    </td>
+                    <td>
+                        {{ $result->username }}
+                    </td>
+                    <td class="content">
+                        標題： {{ $result->title }}<br>
+                        內容：<br>
+                        <pre>{{ $result->content }} </pre>
+                        @if (!empty($result->mood))
+                            <br>心情： {{ $result->mood }}
+                        @endif
+                    </td>
+                    <td>
+                        {{ $result->created_at }}
+                    </td>
+                    <td>
+                        {{ $result->updated_at }}
+                    </td>
+                </tr>
             @endforeach
-        </select>
-        <input type="submit" value="留言" />
-    </form>
+        </tbody>
+    </table>
 
-    @foreach ($results as $result)
-        <br>No. {{ $result->id }}
-        <br>Name： {{ $result->username }}
-        <br>Title： {{ $result->title }}
-        <br>Content：<br>
-        <pre>{{ $result->content }} </pre>
-        <br>Mood： {{ $result->mood }}
-        <br>Created Time： {{ $result->created_at }}
-        <br>Updated Time： {{ $result->updated_at }}
-
-        {{-- <button type="submit" onclick="return confirm('確認編輯？')">編輯</button> --}}
-        <br><button onclick="location.href='{{ route('message.edit', $result->id) }}'" type="button">編輯</button>
-
-        <form action="{{ route('message.destroy', $result->id) }}" method="post">
-            @csrf
-            @method('delete')
-            <button type="submit" onclick="return confirm('確認刪除？')">删除</button>
-        </form>-------------------------------------------------------<br>
-    @endforeach
 </body>
 
 </html>

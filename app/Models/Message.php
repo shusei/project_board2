@@ -20,12 +20,12 @@ class Message extends Model
         'update_at',
     ];
 
-    public static function getNormalizationDatabase($id = null)
+    public static function getWithUsersAndMoods($id = null)
     {
-        if (!$id) {
+        if (is_null($id)) {
             $results = DB::table('messages AS m')
                 ->join('users', 'users.id', '=', 'm.user_id')
-                ->join('moods', 'moods.id', '=', 'm.mood_id')
+                ->LeftJoin('moods', 'moods.id', '=', 'm.mood_id')
                 ->select('m.*', 'users.username', 'moods.mood')
                 ->orderByDesc('m.updated_at')
                 ->get();
@@ -34,7 +34,7 @@ class Message extends Model
         } else {
             $result = DB::table('messages AS m')
                 ->join('users', 'users.id', '=', 'm.user_id')
-                ->join('moods', 'moods.id', '=', 'm.mood_id')
+                ->LeftJoin('moods', 'moods.id', '=', 'm.mood_id')
                 ->select('m.*', 'users.username', 'moods.mood')
                 ->where('m.id', '=', $id)
                 ->orderByDesc('m.updated_at')

@@ -5,47 +5,75 @@ namespace App\Http\Controllers;
 use App\Models\Message;
 use App\Models\Mood;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\Validator;
 
 class MessageController extends Controller
 {
     /**
      * Display a listing of the resource.
      *
-     * @return \Illuminate\Http\Response
+     * @return \Illuminate\Contracts\View\View
      */
     public function index()
     {
         // 列出所有資料
-        $results = Message::getNormalizationDatabase();
+        $view = 'index';    // index.blade.php
+        $model = array();
+
+        $results = Message::getWithUsersAndMoods();
         $moods = Mood::get();
 
-        return view('index', ['results' => $results], ['moods' => $moods]);
+        $model['results'] = $results;
+        $model['moods'] = $moods;
+
+        return view($view, $model);
     }
 
     /**
      * Show the form for creating a new resource.
      *
-     * @return \Illuminate\Http\Response
+     * @return \Illuminate\Contracts\View\View
      */
     public function create()
     {
         //
+        $view = 'create';   //create.blade.php
+        $model = array();
+
+        $moods = Mood::get();
+
+        $model['moods'] = $moods;
+
+        return view($view, $model);
     }
 
     /**
      * Store a newly created resource in storage.
      *
      * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
+     * @return \Illuminate\Contracts\View\View
      */
     public function store(Request $request)
     {
-        //
         //dd($request->all());
-        Message::create($request->all());
+        // Message::create($request->all());
+        // dd($this->validated($request) === true);
+        $validated = $this->validated($request);
+        if ($validated === true) {
+            $message = new Message;
 
-        return Redirect::back();
+            $message->user_id = $request->user_id;
+            $message->title = $request->title;
+            $message->content = $request->content;
+            $message->mood_id = $request->mood_id;
+
+            $message->save();
+
+            $msg = '發表留言成功';
+            return redirect('/message')->with('msg', $msg);
+        } else {
+            return $validated;
+        }
     }
 
     /**
@@ -57,6 +85,7 @@ class MessageController extends Controller
     public function show($id)
     {
         //
+        dd(Message::getWithUsersAndMoods($id));
     }
 
     /**
@@ -68,9 +97,10 @@ class MessageController extends Controller
     public function edit($id)
     {
         //
-        $model = [];
+        $view = 'edit';
+        $model = array();
 
-        $result = Message::getNormalizationDatabase($id);
+        $result = Message::getWithUsersAndMoods($id);
         $moods = Mood::get();
 
         $model['result'] = $result;
@@ -79,7 +109,7 @@ class MessageController extends Controller
         // dd($moods);
 
 
-        return view('edit', $model);
+        return view($view, $model);
         // return view('edit', ['result' => $result], ['moods' => $moods]);
     }
 
@@ -94,9 +124,21 @@ class MessageController extends Controller
     {
         // dd($request->all());
 
-        Message::find($id)->update($request->all());
+        $message = Message::find($id);
 
-        return Redirect::to('/message');
+        $validated = $this->validated($request);
+        if ($validated === true) {
+            $message->title = $request->title;
+            $message->content = $request->content;
+            $message->mood_id = $request->mood_id;
+
+            $message->save();
+
+            $msg = '修改成功';
+            return redirect('/message')->with('msg', $msg);
+        } else {
+            return $validated;
+        }
     }
 
     /**
@@ -110,6 +152,39 @@ class MessageController extends Controller
         //
         Message::find($id)->delete();
 
-        return Redirect::back();
+        return redirect()->back();
+    }
+
+    /**
+     * 檢查輸入格式
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return boolean | \Illuminate\Routing\Redirector
+     */
+    public function validated(Request $request)
+    {
+        $validator = Validator::make(
+            $request->all(),
+            [
+                'user_id' => 'required|max:10',
+                'title' => 'required|max:10',
+                'content' => 'required',
+            ],
+            [
+                'user_id.required' => 'User ID 不可空白',
+                'user_id.max' => 'User ID 不可超個十個字元',
+                'title.required' => '標題不可空白',
+                'title.max' => '標題不可超個十個字元',
+                'content.required' => '內容不可空白',
+            ]
+        );
+
+        if ($validator->fails()) {
+            return redirect()->back()
+                    ->withErrors($validator)
+                    ->withInput();
+        }
+
+        return true;
     }
 }
