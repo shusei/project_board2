@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\CreateAndEditFormRequest;
 use App\Models\Message;
 use App\Models\Mood;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Auth;
 
 class MessageController extends Controller
 {
@@ -14,19 +16,38 @@ class MessageController extends Controller
      *
      * @return \Illuminate\Contracts\View\View
      */
-    public function index()
+    public function index(Request $request)
     {
-        // 列出所有資料
-        $view = 'index';    // index.blade.php
-        $model = array();
 
-        $results = Message::getWithUsersAndMoods();
-        $moods = Mood::get();
+        $searchItem = $request->input('q');
+        // var_dump($searchItem);
+        if($searchItem === null && $searchItem !== "") {
+            // dd('index');
+            // 列出所有資料
+            $view = 'message.index';    // index.blade.php
+            $model = array();
 
-        $model['results'] = $results;
-        $model['moods'] = $moods;
+            $messages = Message::findWithUsersAndMoods();
 
-        return view($view, $model);
+
+            $model['messages'] = $messages;
+
+            return view($view, $model);
+        } else {
+            // dd('search');
+
+            $view = 'message.index';
+            $model = array();
+
+            $messages = Message::findWithUsersAndMoods(null, $searchItem);
+
+            $model['messages'] = $messages;
+
+
+            return view($view, $model);
+
+        }
+
     }
 
     /**
@@ -36,12 +57,10 @@ class MessageController extends Controller
      */
     public function create()
     {
-        //
-        $view = 'create';   //create.blade.php
+        $view = 'message.createAndEdit';   //edit.blade.php
         $model = array();
 
         $moods = Mood::get();
-
         $model['moods'] = $moods;
 
         return view($view, $model);
@@ -51,29 +70,11 @@ class MessageController extends Controller
      * Store a newly created resource in storage.
      *
      * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Contracts\View\View
+     * @return App\Http\Controllers\MessageController::update
      */
-    public function store(Request $request)
+    public function store(CreateAndEditFormRequest $request)
     {
-        //dd($request->all());
-        // Message::create($request->all());
-        // dd($this->validated($request) === true);
-        $validated = $this->validated($request);
-        if ($validated === true) {
-            $message = new Message;
-
-            $message->user_id = $request->user_id;
-            $message->title = $request->title;
-            $message->content = $request->content;
-            $message->mood_id = $request->mood_id;
-
-            $message->save();
-
-            $msg = '發表留言成功';
-            return redirect('/message')->with('msg', $msg);
-        } else {
-            return $validated;
-        }
+        return $this->update($request);
     }
 
     /**
@@ -85,32 +86,36 @@ class MessageController extends Controller
     public function show($id)
     {
         //
-        dd(Message::getWithUsersAndMoods($id));
+        // dd(Message::getWithUsersAndMoods($id));
     }
 
     /**
      * Show the form for editing the specified resource.
      *
      * @param  int  $id
-     * @return \Illuminate\Http\Response
+     * @return \Illuminate\Contracts\View\View
      */
     public function edit($id)
     {
-        //
-        $view = 'edit';
-        $model = array();
+        $message = Message::findWithUsersAndMoods($id);
+        if($message->isEmpty()) {
+            return redirect('/')->with('msg', '編輯目標不存在');
+        }
 
-        $result = Message::getWithUsersAndMoods($id);
-        $moods = Mood::get();
+        if($message[0]->user_id == Auth::id()) {
 
-        $model['result'] = $result;
-        $model['moods'] = $moods;
+            $view = 'message.createAndEdit';
+            $model = array();
 
-        // dd($moods);
+            $model['message'] = $message[0];
+            $moods = Mood::get();
+            $model['moods'] = $moods;
 
-
-        return view($view, $model);
-        // return view('edit', ['result' => $result], ['moods' => $moods]);
+            return view($view, $model);
+        } else {
+            $msg = '使用者異常，載入編輯頁面失敗';
+            return redirect('/')->with('msg', $msg);
+        }
     }
 
     /**
@@ -118,66 +123,11 @@ class MessageController extends Controller
      *
      * @param  \Illuminate\Http\Request  $request
      * @param  int  $id
-     * @return \Illuminate\Http\Response
+     * @return \Illuminate\Http\RedirectResponse
      */
-    public function update(Request $request, $id)
+    public function update(CreateAndEditFormRequest $request, $id = null)
     {
-        // dd($request->all());
-
-        $message = Message::find($id);
-
-        $validated = $this->validated($request);
-        if ($validated === true) {
-            $message->title = $request->title;
-            $message->content = $request->content;
-            $message->mood_id = $request->mood_id;
-
-            $message->save();
-
-            $msg = '修改成功';
-            return redirect('/message')->with('msg', $msg);
-        } else {
-            return $validated;
-        }
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function destroy($id)
-    {
-        //
-        Message::find($id)->delete();
-
-        return redirect()->back();
-    }
-
-    /**
-     * 檢查輸入格式
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return boolean | \Illuminate\Routing\Redirector
-     */
-    public function validated(Request $request)
-    {
-        $validator = Validator::make(
-            $request->all(),
-            [
-                'user_id' => 'required|max:10',
-                'title' => 'required|max:10',
-                'content' => 'required',
-            ],
-            [
-                'user_id.required' => 'User ID 不可空白',
-                'user_id.max' => 'User ID 不可超個十個字元',
-                'title.required' => '標題不可空白',
-                'title.max' => '標題不可超個十個字元',
-                'content.required' => '內容不可空白',
-            ]
-        );
+        $validator = $request->getValidatorInstance();
 
         if ($validator->fails()) {
             return redirect()->back()
@@ -185,6 +135,77 @@ class MessageController extends Controller
                     ->withInput();
         }
 
-        return true;
+        if (isset($id)) {
+            $msg = '修改成功';
+            $message = Message::find($id);
+
+            if($message->user_id != Auth::id()) {
+                $msg = '使用者異常，執行修改失敗';
+                return redirect('/')->with('msg', $msg);
+            }
+        } else {
+            $msg = '發表留言成功';
+            $message = new Message;
+            $message->user_id = Auth::id();
+        }
+
+        $message->title = $request->title;
+        $message->content = $request->content;
+        $message->mood_id = $request->mood_id;
+        $message->save();
+
+        return redirect('/')->with('msg', $msg);
+
     }
+
+    /**
+     * Remove the specified resource from storage.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function destroy($id)
+    {
+
+        $msg = '刪除成功';
+        $message = Message::find($id);
+
+        if (isset($message)) {
+
+            if($message->user_id == Auth::id()) {
+                $message->delete();
+            } else {
+                $msg = '使用者異常，刪除失敗';
+                return redirect('/')->with('msg', $msg);
+            }
+        } else {
+            $msg = '無此筆資料';
+        }
+
+        return redirect()->back()->with('msg', $msg);
+    }
+
+    /**
+     * 檢查輸入格式
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Contracts\Validation\Validator
+     */
+    // public function validated(Request $request)
+    // {
+    //     $validator = Validator::make(
+    //         $request->all(),
+    //         [
+    //             'title' => 'required|max:10',
+    //             'content' => 'required',
+    //         ],
+    //         [
+    //             'title.required' => '標題不可空白',
+    //             'title.max' => '標題不可超個十個字元',
+    //             'content.required' => '內容不可空白',
+    //         ]
+    //     );
+
+    //     return $validator;
+    // }
 }

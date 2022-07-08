@@ -8,7 +8,7 @@
     <title>發表留言</title>
 
     <style>
-        span.red {
+        div, span.red {
             color: red;
         }
     </style>
@@ -16,7 +16,7 @@
 </head>
 
 <body>
-    <p><a href="{{ route('message.index') }}">回首頁</a></p>
+    <p><a href="{{ route('homepage') }}">回首頁</a></p>
     <form method="POST" action="{{ route('message.store') }}" novalidate>
         @csrf
         <span class="red">*</span>User ID： <input type="text" name="user_id" placeholder="User ID" value="{{ old('user_id') }}" required><br>
@@ -33,7 +33,7 @@
     </form>
 
     @if ($errors->any())
-        <div>
+        <div class="red">
             <ul>
                 @foreach ($errors->all() as $error)
                     <li>{{ $error }}</li>
